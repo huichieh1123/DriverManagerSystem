@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+openpyxl
+pymongo
+dnspython
+python-dotenv
+motor
