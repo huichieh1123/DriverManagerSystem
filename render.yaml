@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: driver-manager-backend
+    env: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: MONGO_DETAILS
+        sync: false # Set this value in Render dashboard
+      - key: FRONTEND_URL
+        sync: false # Set this value in Render dashboard after Vercel deployment
