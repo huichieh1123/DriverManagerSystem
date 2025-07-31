@@ -194,7 +194,7 @@ const cancelAssigningJob = () => {
 const handleAssignJob = async ({ jobId, driverId }) => {
   try {
     const response = await axios.put(
-      `http://127.0.0.1:8000/api/v1/jobs/${jobId}/assign?username=${props.currentUser.username}&driver_id=${driverId}`
+      `$ {import.meta.env.VITE_API_URL}/api/v1/jobs/${jobId}/assign?username=${props.currentUser.username}&driver_id=${driverId}`
     )
     //alert('Job assigned successfully!')
     cancelAssigningJob() // Close modal

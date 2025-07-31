@@ -16,7 +16,7 @@ const fetchCurrentUser = async () => {
   const username = localStorage.getItem('currentUsername');
   if (username) {
     try {
-      const response = await axios.get(`http://127.0.0.1:8000/api/v1/users/me?username=${username}`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${username}`);
       currentUser.value = response.data;
       localStorage.setItem('currentUser', JSON.stringify(response.data)); // Ensure localStorage is updated with latest data
     } catch (err) {

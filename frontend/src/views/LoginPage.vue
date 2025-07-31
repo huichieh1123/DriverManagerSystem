@@ -42,7 +42,7 @@ const handleRegister = async (userData) => {
 
 const handleLogin = async (userData) => {
   try {
-    const response = await axios.post('http://127.0.0.1:8000/api/v1/users/login', userData)
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/users/login`, userData)
     alert('Login successful!')
     navigateToDashboard(response.data) // Direct navigation
   } catch (err) {

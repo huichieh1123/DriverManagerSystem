@@ -69,7 +69,7 @@ const handleUpdateProfile = async (updatedData) => {
   if (!userProfile.value) return
   try {
     const response = await axios.put(
-      `http://127.0.0.1:8000/api/v1/users/me?username=${userProfile.value.username}`,
+      `$ {import.meta.env.VITE_API_URL}/api/v1/users/me?username=${userProfile.value.username}`,
       updatedData
     )
     userProfile.value = response.data // Update local userProfile

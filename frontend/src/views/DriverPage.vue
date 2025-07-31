@@ -61,7 +61,7 @@ const handleCompleteJob = async (jobId) => {
   if (confirm('Are you sure you want to mark this job as completed?')) {
     try {
       const response = await axios.put(
-        `http://127.0.0.1:8000/api/v1/drivers/jobs/${jobId}/complete?username=${props.currentUser.username}`
+        `$ {import.meta.env.VITE_API_URL}/api/v1/drivers/jobs/${jobId}/complete?username=${props.currentUser.username}`
       )
       alert('Job completed successfully!')
       fetchDriverData() // Refresh job list to reflect changes
