@@ -13,6 +13,8 @@ origins = [
     FRONTEND_URL,
     "http://localhost:5173", # For local frontend development
     "http://127.0.0.1:5173", # For local frontend development
+    "https://driver-manager-system.netlify.app", # For production frontend deployment
+
 ]
 
 print("CORS allowed origins:", origins)
