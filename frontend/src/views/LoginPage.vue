@@ -31,14 +31,15 @@ const navigateToDashboard = (user) => {
 
 const handleRegister = async (userData) => {
   try {
-    const response = await axios.post('${import.meta.env.VITE_API_URL}/api/v1/users/register', userData)
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/users/register`, userData)
     alert('Registration successful!')
-    navigateToDashboard(response.data) // Direct navigation
+    navigateToDashboard(response.data)
   } catch (err) {
     console.error('Registration error:', err.response ? err.response.data : err)
     alert(`Registration failed: ${err.response ? err.response.data.detail : err.message}`)
   }
 }
+
 
 const handleLogin = async (userData) => {
   try {
