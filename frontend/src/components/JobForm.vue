@@ -124,7 +124,9 @@ const handleUploadExcel = async () => {
 
   try {
     const response = await axios.post(
-      `$ {import.meta.env.VITE_API_URL}/api/v1/dispatchers/jobs/upload?username=${localStorage.getItem('currentUsername')}`,
+      `${
+      import.meta.env.VITE_API_URL
+    }/api/v1/dispatchers/jobs/upload?username=${localStorage.getItem('currentUsername')}`,
       formData,
       {
         headers: {
