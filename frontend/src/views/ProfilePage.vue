@@ -53,7 +53,7 @@ const fetchUserProfile = async () => {
   const username = localStorage.getItem('currentUsername')
   if (username) {
     try {
-      const response = await axios.get(`http://127.0.0.1:8000/api/v1/users/me?username=${username}`)
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${username}`)
       userProfile.value = response.data
     } catch (err) {
       console.error('Error fetching user profile:', err)

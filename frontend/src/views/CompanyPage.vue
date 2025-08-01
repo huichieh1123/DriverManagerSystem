@@ -57,19 +57,19 @@ const fetchCompanyData = async () => {
   try {
     // Fetch dispatchers for company
     const dispatchersResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/companies/users/company_dispatchers?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/companies/users/company_dispatchers?username=${props.currentUser.username}`
     )
     companyDispatchers.value = dispatchersResponse.data
 
     // Fetch all jobs for the company
     const allCompanyJobsResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/jobs/?company_id=${props.currentUser.id}`
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?company_id=${props.currentUser.id}`
     )
     companyAllJobs.value = allCompanyJobsResponse.data
 
     // Fetch all drivers for assignment
     const driversResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/users/?role=driver&username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/users/?role=driver&username=${props.currentUser.username}`
     )
     availableDrivers.value = driversResponse.data
 
@@ -89,7 +89,7 @@ const handleSendInvitation = async () => {
   try {
     // First, check the target dispatcher's current status
     const targetDispatcherResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/users/me?username=${dispatcherUsernameToInvite.value}`
+      `${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${dispatcherUsernameToInvite.value}`
     );
     const targetDispatcher = targetDispatcherResponse.data;
 
@@ -104,7 +104,7 @@ const handleSendInvitation = async () => {
     }
 
     const response = await axios.post(
-      `http://127.0.0.1:8000/api/v1/companies/invitations/send?username=${props.currentUser.username}`,
+      `${import.meta.env.VITE_API_URL}/api/v1/companies/invitations/send?username=${props.currentUser.username}`,
       { dispatcher_username: dispatcherUsernameToInvite.value }
     )
     alert(`Invitation sent to ${response.data.dispatcher_username} (ID: ${response.data.id})!`)
@@ -119,7 +119,7 @@ const handleRemoveDispatcher = async (dispatcherId) => {
   if (confirm('Are you sure you want to remove this dispatcher from your company?')) {
     try {
       const response = await axios.put(
-        `http://127.0.0.1:8000/api/v1/companies/users/${dispatcherId}/remove_company?username=${props.currentUser.username}`
+        `${import.meta.env.VITE_API_URL}/api/v1/companies/users/${dispatcherId}/remove_company?username=${props.currentUser.username}`
       )
       alert(`Dispatcher ${response.data.username} removed from company.`)
       fetchCompanyData() // Refresh the list of dispatchers
@@ -141,7 +141,7 @@ const cancelEditingJob = () => {
 const handleUpdateJob = async ({ id, data }) => {
   try {
     const response = await axios.put(
-      `http://127.0.0.1:8000/api/v1/jobs/${id}?username=${props.currentUser.username}`,
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/${id}?username=${props.currentUser.username}`,
       data
     )
     alert('Job updated successfully!')
@@ -157,7 +157,7 @@ const handleDeleteJob = async (jobId) => {
   if (confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
     try {
       await axios.delete(
-        `http://127.0.0.1:8000/api/v1/jobs/${jobId}?username=${props.currentUser.username}`
+        `${import.meta.env.VITE_API_URL}/api/v1/jobs/${jobId}?username=${props.currentUser.username}`
       )
       alert('Job deleted successfully!')
       fetchCompanyData() // Refresh job list

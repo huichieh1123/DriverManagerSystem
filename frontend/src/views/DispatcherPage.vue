@@ -52,25 +52,25 @@ const fetchDispatcherData = async () => {
   try {
     // Fetch jobs created by this dispatcher
     const createdResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/jobs/?created_by_dispatcher_id=${props.currentUser.id}`
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?created_by_dispatcher_id=${props.currentUser.id}`
     )
     myCreatedJobs.value = createdResponse.data
 
     // Fetch public pending jobs (for dispatcher to see)
     const publicResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/jobs/?is_public=true&status=pending`
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?is_public=true&status=pending`
     )
     publicPendingJobs.value = publicResponse.data
 
     // Fetch invitations for dispatcher
     const invitationsResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/dispatchers/invitations/me?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations/me?username=${props.currentUser.username}`
     )
     myInvitations.value = invitationsResponse.data
 
     // Fetch all drivers for assignment
     const driversResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/users/?role=driver&username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/users/?role=driver&username=${props.currentUser.username}`
     )
     availableDrivers.value = driversResponse.data
 
@@ -85,7 +85,7 @@ watch(() => props.currentUser, fetchDispatcherData) // Re-fetch when currentUser
 const handleCreateJob = async (jobData) => {
   try {
     const response = await axios.post(
-      `http://127.0.0.1:8000/api/v1/dispatchers/jobs/?username=${props.currentUser.username}`,
+      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/jobs/?username=${props.currentUser.username}`,
       jobData
     )
     alert('Job created successfully!')
@@ -103,7 +103,7 @@ const handleJobsUploaded = () => {
 const handleClaimJob = async (jobId) => {
   try {
     const response = await axios.post(
-      `http://127.0.0.1:8000/api/v1/drivers/jobs/${jobId}/claim?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/drivers/jobs/${jobId}/claim?username=${props.currentUser.username}`
     )
     alert('Job claimed successfully!')
     fetchDispatcherData() // Refresh job list to reflect changes
@@ -116,11 +116,11 @@ const handleClaimJob = async (jobId) => {
 const handleAcceptInvitation = async (invitationId) => {
   try {
     const response = await axios.put(
-      `http://127.0.0.1:8000/api/v1/dispatchers/invitations/${invitationId}/accept?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations/${invitationId}/accept?username=${props.currentUser.username}`
     )
     alert('Invitation accepted!')
     // Re-fetch current user to update company info immediately
-    const userResponse = await axios.get(`http://127.0.0.1:8000/api/v1/users/me?username=${props.currentUser.username}`);
+    const userResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${props.currentUser.username}`);
     props.currentUser.value = userResponse.data; // Update currentUser prop
     localStorage.setItem('currentUser', JSON.stringify(userResponse.data)); // Update localStorage
     fetchDispatcherData(); // Refresh data after accepting
@@ -133,7 +133,7 @@ const handleAcceptInvitation = async (invitationId) => {
 const handleDeclineInvitation = async (invitationId) => {
   try {
     const response = await axios.put(
-      `http://127.0.0.1:8000/api/v1/dispatchers/invitations/${invitationId}/decline?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations/${invitationId}/decline?username=${props.currentUser.username}`
     )
     alert('Invitation declined!')
     fetchDispatcherData() // Refresh data after declining
@@ -154,7 +154,7 @@ const cancelEditingJob = () => {
 const handleUpdateJob = async ({ id, data }) => {
   try {
     const response = await axios.put(
-      `http://127.0.0.1:8000/api/v1/jobs/${id}?username=${props.currentUser.username}`,
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/${id}?username=${props.currentUser.username}`,
       data
     )
     //alert('Job updated successfully!')
@@ -170,7 +170,7 @@ const handleDeleteJob = async (jobId) => {
   if (confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
     try {
       await axios.delete(
-        `http://127.0.0.1:8000/api/v1/jobs/${jobId}?username=${props.currentUser.username}`
+        `${import.meta.env.VITE_API_URL}/api/v1/jobs/${jobId}?username=${props.currentUser.username}`
       )
       alert('Job deleted successfully!')
       fetchDispatcherData() // Refresh job list

@@ -73,7 +73,7 @@ const handleFileChange = (event) => {
 const handleDownloadTemplate = async () => {
   try {
     const response = await axios.get(
-      `http://127.0.0.1:8000/api/v1/dispatchers/jobs/template?username=${localStorage.getItem('currentUsername')}`,
+      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/jobs/template?username=${localStorage.getItem('currentUsername')}`,
       { responseType: 'blob' } // Important for downloading files
     )
     const url = window.URL.createObjectURL(new Blob([response.data]))

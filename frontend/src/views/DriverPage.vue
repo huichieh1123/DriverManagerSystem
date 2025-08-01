@@ -26,13 +26,13 @@ const fetchDriverData = async () => {
   try {
     // Fetch jobs assigned to this driver
     const assignedResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/jobs/?assigned_driver_id=${props.currentUser.id}`
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?assigned_driver_id=${props.currentUser.id}`
     )
     myAssignedJobs.value = assignedResponse.data
 
     // Fetch public pending jobs
     const publicResponse = await axios.get(
-      `http://127.0.0.1:8000/api/v1/jobs/?is_public=true&status=pending`
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?is_public=true&status=pending`
     )
     publicPendingJobs.value = publicResponse.data
 
@@ -47,7 +47,7 @@ watch(() => props.currentUser, fetchDriverData) // Re-fetch when currentUser cha
 const handleClaimJob = async (jobId) => {
   try {
     const response = await axios.post(
-      `http://127.0.0.1:8000/api/v1/drivers/jobs/${jobId}/claim?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/drivers/jobs/${jobId}/claim?username=${props.currentUser.username}`
     )
     alert('Job claimed successfully!')
     fetchDriverData() // Refresh job list to reflect changes
