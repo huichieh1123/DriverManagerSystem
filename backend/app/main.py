@@ -15,6 +15,8 @@ origins = [
     "http://127.0.0.1:5173", # For local frontend development
 ]
 
+print("CORS allowed origins:", origins)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
