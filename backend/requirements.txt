@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 openpyxl
+pandas
 pymongo
 dnspython
 python-dotenv
 motor
 python-multipart
+pandas

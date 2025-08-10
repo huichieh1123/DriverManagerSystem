@@ -33,6 +33,10 @@ const emit = defineEmits(['register', 'login', 'update'])
 
 const roles = ['driver', 'dispatcher', 'company']
 
+const showDriverProfile = ref(false)
+const showDispatcherProfile = ref(false)
+const showCompanyProfile = ref(false)
+
 // Watch for changes in initialData when props are updated (e.g., after login)
 watch(() => props.initialData, (newVal) => {
   username.value = newVal.username
@@ -116,21 +120,31 @@ const updateCompanyProfile = (data) => {
 
     <!-- Dynamic Profile Forms -->
     <div v-if="showRoleProfiles && (isUpdate || selectedRoles.length > 0)">
-      <DriverProfileForm
-        v-if="selectedRoles.includes('driver')"
-        :initialData="driverProfileData"
-        @update="updateDriverProfile"
-      />
-      <DispatcherProfileForm
-        v-if="selectedRoles.includes('dispatcher')"
-        :initialData="dispatcherProfileData"
-        @update="updateDispatcherProfile"
-      />
-      <CompanyProfileForm
-        v-if="selectedRoles.includes('company')"
-        :initialData="companyProfileData"
-        @update="updateCompanyProfile"
-      />
+      <div v-if="selectedRoles.includes('driver')">
+        <h3 @click="showDriverProfile = !showDriverProfile">Driver Profile (click to expand)</h3>
+        <DriverProfileForm
+          v-if="showDriverProfile"
+          :initialData="driverProfileData"
+          :companyName="initialData.company_name"
+          @update="updateDriverProfile"
+        />
+      </div>
+      <div v-if="selectedRoles.includes('dispatcher')">
+        <h3 @click="showDispatcherProfile = !showDispatcherProfile">Dispatcher Profile (click to expand)</h3>
+        <DispatcherProfileForm
+          v-if="showDispatcherProfile"
+          :initialData="dispatcherProfileData"
+          @update="updateDispatcherProfile"
+        />
+      </div>
+      <div v-if="selectedRoles.includes('company')">
+        <h3 @click="showCompanyProfile = !showCompanyProfile">Company Profile (click to expand)</h3>
+        <CompanyProfileForm
+          v-if="showCompanyProfile"
+          :initialData="companyProfileData"
+          @update="updateCompanyProfile"
+        />
+      </div>
     </div>
 
     <div class="form-actions">
@@ -154,6 +168,10 @@ h2 {
   text-align: center;
   color: #333;
   margin-bottom: 1.5rem;
+}
+
+h3 {
+  cursor: pointer;
 }
 
 .form-group {

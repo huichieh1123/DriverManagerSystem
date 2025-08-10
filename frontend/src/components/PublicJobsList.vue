@@ -7,7 +7,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['claimJob'])
+const emit = defineEmits(['applyForJob', 'viewDetails'])
 
 const getStatusClass = (status) => {
   switch (status) {
@@ -15,14 +15,21 @@ const getStatusClass = (status) => {
     case 'assigned': return 'status-assigned'
     case 'completed': return 'status-completed'
     case 'cancelled': return 'status-cancelled'
+    case 'claim_requested': return 'status-claim-requested'
     default: return ''
   }
 }
 
-const handleClaimJob = (jobId) => {
-  if (confirm('Are you sure you want to claim this job?')) {
-    emit('claimJob', jobId)
-  }
+const formatStatus = (status) => {
+  return status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
+const handleApplyForJob = (job) => {
+  emit('applyForJob', job)
+}
+
+const handleViewDetails = (job) => {
+  emit('viewDetails', job)
 }
 </script>
 
@@ -36,14 +43,25 @@ const handleClaimJob = (jobId) => {
       <li v-for="job in jobs" :key="job.id" class="job-item">
         <div class="job-header">
           <h4>{{ job.title }}</h4>
-          <span :class="['job-status', getStatusClass(job.status)]">{{ job.status.charAt(0).toUpperCase() + job.status.slice(1) }}</span>
+          <span :class="['job-status', getStatusClass(job.status)]">{{ formatStatus(job.status) }}</span>
         </div>
         <p class="job-description">{{ job.description || 'No description provided.' }}</p>
+        <div class="job-details">
+          <div v-if="job.company"><strong>Company:</strong> {{ job.company }}</div>
+          <div v-if="job.transfer_type"><strong>Transfer Type:</strong> {{ job.transfer_type }}</div>
+          <div v-if="job.pick_up_date"><strong>Pick Up Date:</strong> {{ job.pick_up_date }}</div>
+          <div v-if="job.pick_up_time"><strong>Pick Up Time:</strong> {{ job.pick_up_time }}</div>
+          <div v-if="job.flight_number"><strong>Flight Number:</strong> {{ job.flight_number }}</div>
+          <div v-if="job.total_price"><strong>Total Price:</strong> {{ job.total_price }}</div>
+        </div>
         <div class="job-meta">
           <span v-if="job.created_by_dispatcher_id">Created by Dispatcher ID: {{ job.created_by_dispatcher_id }}</span>
           <span v-if="job.company_name">Company: {{ job.company_name }}</span>
         </div>
-        <button @click="handleClaimJob(job.id)" class="claim-button">Claim Job</button>
+        <div class="job-actions">
+          <button @click="handleApplyForJob(job)" class="claim-button">Apply for Job</button>
+          <button @click="handleViewDetails(job)" class="view-details-btn">View Details</button>
+        </div>
       </li>
     </ul>
   </div>
@@ -125,9 +143,30 @@ ul {
   background-color: #d9534f; /* Red */
 }
 
+.status-claim-requested {
+  background-color: #6f42c1; /* Purple */
+}
+
 .job-description {
   color: #666;
   margin-bottom: 1rem;
+}
+
+.job-details {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #eee;
+}
+
+.job-details div {
+  margin-bottom: 0.5rem;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.job-details div:last-child {
+  margin-bottom: 0;
 }
 
 .job-meta {
@@ -140,6 +179,13 @@ ul {
   margin-right: 1rem;
 }
 
+.job-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  justify-content: flex-end;
+}
+
 .claim-button {
   background-color: #007bff;
   color: white;
@@ -149,11 +195,25 @@ ul {
   cursor: pointer;
   font-size: 0.9rem;
   transition: background-color 0.3s ease;
-  align-self: flex-end; /* Align button to the right */
   width: auto; /* Override 100% width from global button style */
 }
 
 .claim-button:hover {
   background-color: #0056b3;
+}
+
+.view-details-btn {
+  background-color: #6c757d;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.view-details-btn:hover {
+  background-color: #5a6268;
 }
 </style>

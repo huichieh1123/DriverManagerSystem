@@ -33,3 +33,12 @@ npm run build
 ```sh
 npm run lint
 ```
+### Run the application:
+
+The application uses `uvicorn` to run. The main application is located in `app/main.py`.
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The backend will be running at `http://127.0.0.1:8000`.

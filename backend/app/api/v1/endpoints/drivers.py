@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 
-from app.api.v1.schemas.jobs import Job, JobCreate, JobUpdate, JobStatus
-from app.api.v1.schemas.users import User, RoleType
-from app.crud import job
+from app.api.v1.schemas.users import User, RoleType, DriverAssociationStatus
+from app.api.v1.schemas.invitations import Invitation, InvitationCreate, InvitationStatus
+from app.crud import invitation, user
 from app.api.v1.endpoints.users import get_current_user # Keep this for now, will refactor users.py later
 
 router = APIRouter()
@@ -14,61 +14,65 @@ async def get_current_driver(current_user: User = Depends(get_current_user)) -> 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only drivers can perform this action")
     return current_user
 
-@router.post("/jobs/{job_id}/claim", response_model=Job)
-async def claim_job(
-    job_id: str, # Changed from int to str
+@router.get("/invitations", response_model=List[Invitation])
+async def get_my_invitations(
     current_driver: User = Depends(get_current_driver)
 ):
-    job_item = await job.get_by_id(job_id)
-    if not job_item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return await invitation.get_for_invitee(current_driver.id, RoleType.DRIVER)
 
-    if job_item["status"] != JobStatus.PENDING.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job is not in pending status and cannot be claimed.")
-
-    if not job_item["is_public"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This job is not public and cannot be claimed.")
-
-    if job_item["assigned_driver_id"] is not None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job is already assigned to a driver.")
-
-    # Update job status and assigned driver
-    job_update_data = JobUpdate(
-        status=JobStatus.ASSIGNED,
-        assigned_driver_id=current_driver.id
-    )
-    updated_job = await job.update(job_id, job_update_data)
-
-    if not updated_job:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to claim job")
-
-    return updated_job
-
-@router.put("/jobs/{job_id}/complete", response_model=Job)
-async def complete_job(
-    job_id: str, # Changed from int to str
+@router.put("/invitations/{invitation_id}/accept", response_model=User)
+async def accept_invitation(
+    invitation_id: str,
     current_driver: User = Depends(get_current_driver)
 ):
-    job_item = await job.get_by_id(job_id)
-    if not job_item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    inv = await invitation.get_by_id(invitation_id)
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
-    if job_item["assigned_driver_id"] != current_driver.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not assigned to this job.")
+    if inv["invitee_id"] != current_driver.id or inv["invitee_role"] != RoleType.DRIVER.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to accept this invitation or invitation is not for a driver")
 
-    if job_item["status"] == JobStatus.COMPLETED.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job is already completed.")
+    if inv["status"] != InvitationStatus.PENDING.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation is not pending")
 
-    if job_item["status"] == JobStatus.CANCELLED.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_BAD_REQUEST, detail="Job has been cancelled.")
+    # Update invitation status
+    await invitation.update(invitation_id, {"status": InvitationStatus.ACCEPTED.value})
 
-    # Update job status to completed
-    job_update_data = JobUpdate(
-        status=JobStatus.COMPLETED
-    )
-    updated_job = await job.update(job_id, job_update_data)
+    # Update driver's company_id, company_name, and association status
+    updated_user = await user.update(current_driver.id, {
+        "company_id": inv["company_id"],
+        "company_name": inv["company_name"],
+        "driver_association_status": DriverAssociationStatus.ASSOCIATED
+    })
 
-    if not updated_job:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete job")
+    if not updated_user:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user profile after accepting invitation."
+        )
 
-    return updated_job
+    return updated_user
+
+@router.put("/invitations/{invitation_id}/decline", response_model=Invitation)
+async def decline_invitation(
+    invitation_id: str,
+    current_driver: User = Depends(get_current_driver)
+):
+    inv = await invitation.get_by_id(invitation_id)
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+
+    if inv["invitee_id"] != current_driver.id or inv["invitee_role"] != RoleType.DRIVER.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to decline this invitation or invitation is not for a driver")
+
+    if inv["status"] != InvitationStatus.PENDING.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation is not pending")
+
+    # Update invitation status
+    updated_inv = await invitation.update(invitation_id, {"status": InvitationStatus.DECLINED.value})
+
+    # Update driver's association status to UNASSOCIATED if it was PENDING
+    if current_driver.driver_association_status == DriverAssociationStatus.PENDING.value:
+        await user.update(current_driver.id, {"driver_association_status": DriverAssociationStatus.UNASSOCIATED})
+
+    return updated_inv

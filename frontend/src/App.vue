@@ -29,23 +29,30 @@ const fetchCurrentUser = async () => {
 };
 
 // Watch for changes in localStorage's currentUser (e.g., from LoginPage)
-watch(() => localStorage.getItem('currentUser'), (newVal) => {
-  currentUser.value = newVal ? JSON.parse(newVal) : null
-  if (currentUser.value) {
-    // Redirect to appropriate page after login
-    if (isCompany.value) {
-      router.push('/company')
-    } else if (isDispatcher.value) {
-      router.push('/dispatcher')
-    } else if (isDriver.value) {
-      router.push('/driver')
-    } else {
-      router.push('/profile') // Default for users with no specific role page
-    }
+watch(currentUser, (newUser) => {
+  localStorage.setItem('currentUser', JSON.stringify(newUser));
+  if (newUser) {
+    localStorage.setItem('currentUsername', newUser.username);
   } else {
-    router.push('/login')
+    localStorage.removeItem('currentUsername');
   }
-}, { immediate: true })
+});
+
+const handleLoginSuccess = (user) => {
+  currentUser.value = user;
+  if (currentUser.value) {
+    if (isCompany.value) {
+      router.push('/company');
+    } else if (isDispatcher.value) {
+      router.push('/dispatcher');
+    } else if (isDriver.value) {
+      router.push('/driver');
+    } else {
+      router.push('/profile');
+    }
+  }
+};
+
 
 const handleLogout = () => {
   localStorage.removeItem('currentUser')
@@ -66,12 +73,13 @@ const handleLogout = () => {
         <router-link v-if="isCompany" to="/company">Company Dashboard</router-link>
         <router-link v-if="isDispatcher" to="/dispatcher">Dispatcher Dashboard</router-link>
         <router-link v-if="isDriver" to="/driver">Driver Dashboard</router-link>
+        <router-link v-if="isDriver" to="/vehicles">Manage Vehicles</router-link>
         <button @click="handleLogout">Logout</button>
       </nav>
     </header>
 
     <main>
-      <router-view :currentUser="currentUser" @update:currentUser="currentUser = $event" />
+      <router-view :currentUser="currentUser" @update:currentUser="currentUser = $event" @login-success="handleLoginSuccess" />
     </main>
   </div>
 </template>

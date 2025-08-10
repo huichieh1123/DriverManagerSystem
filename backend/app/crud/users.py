@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from app.api.v1.schemas.users import UserCreate, User, UserUpdate, RoleType, DispatcherAssociationStatus
+from app.api.v1.schemas.users import UserCreate, User, UserUpdate, RoleType, DispatcherAssociationStatus, DriverAssociationStatus
 from app.db import mongodb
 from pydantic import BaseModel # Import BaseModel to check type
 
@@ -27,6 +27,10 @@ class CRUDUser:
         if "dispatcher_association_status" in update_data and isinstance(update_data["dispatcher_association_status"], DispatcherAssociationStatus):
             update_data["dispatcher_association_status"] = update_data["dispatcher_association_status"].value
 
+        # Convert DriverAssociationStatus enum to string value
+        if "driver_association_status" in update_data and isinstance(update_data["driver_association_status"], DriverAssociationStatus):
+            update_data["driver_association_status"] = update_data["driver_association_status"].value
+
         # Explicitly convert nested profile Pydantic models to dicts
         # This is the crucial part to prevent the AttributeError in mongodb.py
         if "driver_profile" in update_data and update_data["driver_profile"] is not None and isinstance(update_data["driver_profile"], BaseModel):
@@ -38,7 +42,10 @@ class CRUDUser:
 
         return await mongodb.update_user_mongodb(user_id, update_data)
 
-    async def get_dispatchers_by_company_id(self, company_id: int) -> List[Dict[str, Any]]:
+    async def get_dispatchers_by_company_id(self, company_id: str) -> List[Dict[str, Any]]:
         return await mongodb.get_dispatchers_by_company_id_mongodb(company_id)
+
+    async def get_drivers_by_company_id(self, company_id: str) -> List[Dict[str, Any]]:
+        return await mongodb.get_drivers_by_company_id_mongodb(company_id)
 
 user = CRUDUser()

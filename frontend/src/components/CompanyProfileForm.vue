@@ -4,48 +4,54 @@ import { ref, watch, defineProps, defineEmits } from 'vue'
 const props = defineProps({
   initialData: {
     type: Object,
-    default: () => ({ company_name: '', company_address: '', contact_person: '' })
+    default: () => ({
+      company_name: '',
+      tax_id: '',
+      admin_line_id: '',
+      address: '',
+      phone_number: ''
+    })
   }
 })
 
-const companyName = ref(props.initialData.company_name)
-const companyAddress = ref(props.initialData.company_address)
-const contactPerson = ref(props.initialData.contact_person)
+const profile = ref({ ...props.initialData })
 
 const emit = defineEmits(['update'])
 
 watch(() => props.initialData, (newVal) => {
-  companyName.value = newVal.company_name
-  companyAddress.value = newVal.company_address
-  contactPerson.value = newVal.contact_person
+  profile.value = { ...newVal }
 }, { deep: true, immediate: true })
 
 const updateProfile = () => {
-  emit('update', {
-    company_name: companyName.value,
-    company_address: companyAddress.value,
-    contact_person: contactPerson.value
-  })
+  emit('update', profile.value)
 }
 
-// Emit update whenever input changes
-watch([companyName, companyAddress, contactPerson], updateProfile)
+// Emit update whenever any profile data changes
+watch(profile, updateProfile, { deep: true })
 </script>
 
 <template>
   <div class="profile-form-section">
     <h3>Company Profile</h3>
     <div class="form-group">
-      <label for="companyName">Company Name:</label>
-      <input type="text" id="companyName" v-model="companyName" @input="updateProfile" />
+      <label for="company_name">租車公司名稱:</label>
+      <input type="text" id="company_name" v-model="profile.company_name" @input="updateProfile" />
     </div>
     <div class="form-group">
-      <label for="companyAddress">Company Address:</label>
-      <input type="text" id="companyAddress" v-model="companyAddress" @input="updateProfile" />
+      <label for="tax_id">車行統編:</label>
+      <input type="text" id="tax_id" v-model="profile.tax_id" @input="updateProfile" />
     </div>
     <div class="form-group">
-      <label for="contactPerson">Contact Person:</label>
-      <input type="text" id="contactPerson" v-model="contactPerson" @input="updateProfile" />
+      <label for="admin_line_id">管理者 LINE ID:</label>
+      <input type="text" id="admin_line_id" v-model="profile.admin_line_id" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="address">車行地址:</label>
+      <input type="text" id="address" v-model="profile.address" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="phone_number">車行電話:</label>
+      <input type="text" id="phone_number" v-model="profile.phone_number" @input="updateProfile" />
     </div>
   </div>
 </template>

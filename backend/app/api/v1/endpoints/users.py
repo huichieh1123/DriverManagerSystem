@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from app.api.v1.schemas.users import UserCreate, UserLogin, User, RoleType, UserUpdate, DispatcherAssociationStatus
 from app.crud import user
+from app.crud.vehicle import vehicle # Import vehicle crud
 from app.db.mongodb import users_collection, user_helper # Import users_collection and user_helper
 
 router = APIRouter()
@@ -14,6 +15,16 @@ async def get_current_user(username: str) -> User:
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found")
     return User(**user_data)
+
+async def get_current_driver(current_user: User = Depends(get_current_user)) -> User:
+    if RoleType.DRIVER.value not in current_user.roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only drivers can perform this action")
+    return current_user
+
+async def get_current_dispatcher(current_user: User = Depends(get_current_user)) -> User:
+    if RoleType.DISPATCHER.value not in current_user.roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only dispatchers can perform this action")
+    return current_user
 
 @router.post("/users/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register_user(user_in: UserCreate):
@@ -50,15 +61,21 @@ async def update_users_me(user_in: UserUpdate, current_user: User = Depends(get_
 @router.get("/users/", response_model=List[User])
 async def get_users_by_role(
     role: Optional[RoleType] = None,
+    include_vehicles: Optional[bool] = False, # New parameter
     current_user: User = Depends(get_current_user) # Ensure user is logged in
 ):
-    # For simplicity, we'll just return all users for now if no role is specified
-    # In a real app, you'd have more granular control over who can see what users
     query = {}
     if role:
         query["roles"] = role.value
 
     all_users = []
     async for u in users_collection.find(query):
-        all_users.append(User(**user_helper(u)))
+        user_dict = user_helper(u)
+        if include_vehicles and RoleType.DRIVER.value in user_dict.get("roles", []):
+            driver_id = user_dict["id"]
+            driver_vehicles = await vehicle.get_all(owner_id=driver_id)
+            if "driver_profile" not in user_dict or user_dict["driver_profile"] is None:
+                user_dict["driver_profile"] = {}
+            user_dict["driver_profile"]["vehicles"] = driver_vehicles
+        all_users.append(User(**user_dict))
     return all_users

@@ -5,7 +5,7 @@
       <p><strong>Username:</strong> {{ userProfile.username }}</p>
       <p><strong>Name:</strong> {{ userProfile.name || 'Not set' }}</p>
       <p><strong>Roles:</strong>
-        <span v-if="userProfile.roles.length > 0">
+        <span v-if="userProfile.roles && userProfile.roles.length > 0">
           <span v-for="(role, index) in userProfile.roles" :key="role">
             {{ role.charAt(0).toUpperCase() + role.slice(1) }}
             <span v-if="index < userProfile.roles.length - 1">, </span>
@@ -35,52 +35,48 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import axios from 'axios'
-import UserForm from '../components/UserForm.vue'
+import { ref, computed, watch } from 'vue';
+import axios from 'axios';
+import UserForm from '../components/UserForm.vue';
 
 const props = defineProps({
   currentUser: Object
-})
+});
 
-const emit = defineEmits(['update:currentUser'])
+const emit = defineEmits(['update:currentUser']);
 
-const userProfile = ref(null)
+// Use the prop directly for the profile data
+const userProfile = ref(null);
 
-const isDispatcher = computed(() => userProfile.value && userProfile.value.roles.includes('dispatcher'))
-
-const fetchUserProfile = async () => {
-  const username = localStorage.getItem('currentUsername')
-  if (username) {
-    try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${username}`)
-      userProfile.value = response.data
-    } catch (err) {
-      console.error('Error fetching user profile:', err)
-      userProfile.value = null
-    }
+// Watch the incoming prop and update the local ref
+watch(() => props.currentUser, (newVal) => {
+  if (newVal) {
+    userProfile.value = { ...newVal };
+  } else {
+    userProfile.value = null;
   }
-}
+}, { immediate: true, deep: true });
 
-onMounted(fetchUserProfile)
-watch(() => props.currentUser, fetchUserProfile) // Re-fetch if currentUser prop changes
+
+const isDispatcher = computed(() => userProfile.value && userProfile.value.roles.includes('dispatcher'));
+const isDriver = computed(() => userProfile.value && userProfile.value.roles.includes('driver'));
 
 const handleUpdateProfile = async (updatedData) => {
-  if (!userProfile.value) return
+  if (!userProfile.value) return;
   try {
     const response = await axios.put(
-      `$ {import.meta.env.VITE_API_URL}/api/v1/users/me?username=${userProfile.value.username}`,
+      `${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${userProfile.value.username}`,
       updatedData
-    )
-    userProfile.value = response.data // Update local userProfile
-    emit('update:currentUser', response.data) // Notify App.vue to update its currentUser
-    localStorage.setItem('currentUser', JSON.stringify(response.data)) // Update localStorage
-    alert('Profile updated successfully!')
+    );
+    userProfile.value = response.data; // Update local userProfile
+    emit('update:currentUser', response.data); // Notify App.vue to update its currentUser
+    localStorage.setItem('currentUser', JSON.stringify(response.data)); // Update localStorage
+    alert('Profile updated successfully!');
   } catch (err) {
-    console.error('Profile update error:', err.response ? err.response.data : err)
-    alert(`Profile update failed: ${err.response ? err.response.data.detail : err.message}`)
+    console.error('Profile update error:', err.response ? err.response.data : err);
+    alert(`Profile update failed: ${err.response ? err.response.data.detail : err.message}`);
   }
-}
+};
 </script>
 
 <style scoped>

@@ -11,6 +11,12 @@ class RoleType(str, Enum):
 class DispatcherAssociationStatus(str, Enum):
     ASSOCIATED = "associated"
     UNASSOCIATED = "unassociated"
+    PENDING = "pending"
+
+class DriverAssociationStatus(str, Enum):
+    ASSOCIATED = "associated"
+    UNASSOCIATED = "unassociated"
+    PENDING = "pending"
 
 class UserBase(BaseModel):
     username: str
@@ -30,18 +36,20 @@ class UserUpdate(BaseModel):
     driver_profile: Optional[DriverProfileUpdate] = None
     dispatcher_profile: Optional[DispatcherProfileUpdate] = None
     company_profile: Optional[CompanyProfileUpdate] = None
-    company_id: Optional[str] = None # Changed from int to str
-    company_name: Optional[str] = None # For dispatcher to link to a company
-    dispatcher_association_status: Optional[DispatcherAssociationStatus] = None # New: explicit status for dispatcher
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    dispatcher_association_status: Optional[DispatcherAssociationStatus] = None
+    driver_association_status: Optional[DriverAssociationStatus] = None
 
 class User(UserBase):
-    id: str # Changed from int to str
+    id: str
     driver_profile: Optional[DriverProfile] = None
     dispatcher_profile: Optional[DispatcherProfile] = None
     company_profile: Optional[CompanyProfile] = None
-    company_id: Optional[str] = None # Changed from int to str
-    company_name: Optional[str] = None # For dispatcher to link to a company
-    dispatcher_association_status: Optional[DispatcherAssociationStatus] = None # New: explicit status for dispatcher
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    dispatcher_association_status: Optional[DispatcherAssociationStatus] = None
+    driver_association_status: Optional[DriverAssociationStatus] = None
 
     class Config:
         orm_mode = True

@@ -20,6 +20,7 @@ try:
     users_collection = database.get_collection("users_collection")
     jobs_collection = database.get_collection("jobs_collection")
     invitations_collection = database.get_collection("invitations_collection")
+    vehicles_collection = database.get_collection("vehicles_collection")
     print("MongoDB collections initialized.")
 
 except Exception as e:

@@ -32,6 +32,8 @@ const handleDecline = (invitationId) => {
       <li v-for="invitation in invitations" :key="invitation.id" class="invitation-item">
         <div class="invitation-details">
           <p><strong>From:</strong> {{ invitation.company_name }}</p>
+          <p><strong>Invitee:</strong> {{ invitation.invitee_username }}</p>
+          <p><strong>Role:</strong> {{ invitation.invitee_role }}</p>
           <p><strong>Status:</strong> <span :class="['status', `status-${invitation.status.toLowerCase()}`]">{{ invitation.status }}</span></p>
         </div>
         <div class="invitation-actions" v-if="invitation.status === 'pending'">

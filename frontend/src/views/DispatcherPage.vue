@@ -3,7 +3,12 @@
     <h1>Dispatcher Dashboard</h1>
     <InvitationList :invitations="myInvitations" @acceptInvitation="handleAcceptInvitation" @declineInvitation="handleDeclineInvitation" />
 
-    <JobForm v-if="!editingJob" @createJob="handleCreateJob" @jobsUploaded="handleJobsUploaded" />
+    <div class="collapsible-form">
+      <h2 @click="showCreateJobForm = !showCreateJobForm">Create New Job (click to expand)</h2>
+      <JobForm v-if="showCreateJobForm && !editingJob" :currentUser="currentUser" @createJob="handleCreateJob" />
+    </div>
+
+    <BatchUploadForm @jobsUploaded="handleJobsUploaded" />
 
     <div v-if="editingJob" class="edit-job-section">
       <h2>Edit Job</h2>
@@ -11,15 +16,44 @@
       <button @click="cancelEditingJob">Cancel Edit</button>
     </div>
 
-    <JobList :jobs="myCreatedJobs" title="My Created Jobs" @editJob="startEditingJob" @deleteJob="handleDeleteJob" @assignJob="startAssigningJob" :isCreator="true" :currentUserId="currentUser.id" />
-    <PublicJobsList :jobs="publicPendingJobs" @claimJob="handleClaimJob" />
+    <JobList 
+      :jobs="jobApplications" 
+      title="Driver Job Applications"
+      :isCreator="true" 
+      :currentUserId="currentUser.id"
+      @acceptCopiedJob="handleAcceptCopiedJob" 
+      @rejectCopiedJob="handleRejectCopiedJob"
+      @viewDetails="handleViewJobDetails" 
+    />
+
+    <JobList 
+      :jobs="myCreatedJobs" 
+      title="My Created Jobs" 
+      :isCreator="true" 
+      :currentUserId="currentUser.id"
+      @editJob="startEditingJob" 
+      @deleteJob="handleDeleteJob" 
+      @assignJob="startAssigningJob" 
+      @viewDetails="handleViewJobDetails" 
+    />
+    <button @click="handleExportJobs">Export My Created Jobs to Excel</button>
+    
+    <PublicJobsList :jobs="publicPendingJobs" @viewDetails="handleViewJobDetails" />
 
     <AssignJobModal
+      v-if="showAssignModal && jobToAssign"
       :show="showAssignModal"
       :job="jobToAssign"
       :drivers="availableDrivers"
       @assign="handleAssignJob"
       @close="cancelAssigningJob"
+    />
+
+    <JobDetailsModal
+      :key="selectedJobForDetails ? selectedJobForDetails.id : 'no-job'"
+      :show="showJobDetailsModal"
+      :job="selectedJobForDetails"
+      @close="closeJobDetailsModal"
     />
   </div>
 </template>
@@ -28,49 +62,67 @@
 import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import JobForm from '../components/JobForm.vue'
+import BatchUploadForm from '../components/BatchUploadForm.vue'
 import JobList from '../components/JobList.vue'
 import PublicJobsList from '../components/PublicJobsList.vue'
 import InvitationList from '../components/InvitationList.vue'
 import AssignJobModal from '../components/AssignJobModal.vue'
+import JobDetailsModal from '../components/JobDetailsModal.vue'
 
 const props = defineProps({
   currentUser: Object
 })
 
 const myCreatedJobs = ref([])
+const jobApplications = ref([])
 const publicPendingJobs = ref([])
 const myInvitations = ref([])
-const editingJob = ref(null) // State for job being edited
-const showAssignModal = ref(false) // New: control assign modal visibility
-const jobToAssign = ref(null) // New: job currently being assigned
-const availableDrivers = ref([]) // New: list of all drivers
+const editingJob = ref(null)
+const showAssignModal = ref(false)
+const jobToAssign = ref(null)
+const availableDrivers = ref([])
+const showCreateJobForm = ref(false)
+const showJobDetailsModal = ref(false)
+const selectedJobForDetails = ref(null)
 
 const fetchDispatcherData = async () => {
   if (!props.currentUser || !props.currentUser.roles.includes('dispatcher')) {
     return
   }
   try {
-    // Fetch jobs created by this dispatcher
-    const createdResponse = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?created_by_dispatcher_id=${props.currentUser.id}`
-    )
-    myCreatedJobs.value = createdResponse.data
+    const username = props.currentUser.username;
+    const dispatcherId = props.currentUser.id;
+    const companyId = props.currentUser.company_id;
 
-    // Fetch public pending jobs (for dispatcher to see)
+    // Fetch jobs created by this dispatcher (originals only)
+    const createdResponse = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?created_by_dispatcher_id=${dispatcherId}&job_type=original&username=${username}`
+    )
+    myCreatedJobs.value = createdResponse.data;
+
+    // Fetch pending applications for the dispatcher's company
+    if (companyId) {
+      const applicationsResponse = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/v1/jobs/?job_type=application&status=application_requested&company_id=${companyId}&username=${username}`
+      );
+      jobApplications.value = applicationsResponse.data;
+    }
+
+    // Fetch public pending jobs
     const publicResponse = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?is_public=true&status=pending`
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/?is_public=true&status=pending&username=${username}`
     )
     publicPendingJobs.value = publicResponse.data
 
     // Fetch invitations for dispatcher
     const invitationsResponse = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations/me?username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations?username=${username}`
     )
     myInvitations.value = invitationsResponse.data
 
     // Fetch all drivers for assignment
     const driversResponse = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/v1/users/?role=driver&username=${props.currentUser.username}`
+      `${import.meta.env.VITE_API_URL}/api/v1/users/?role=driver&username=${username}&include_vehicles=true`
     )
     availableDrivers.value = driversResponse.data
 
@@ -79,17 +131,47 @@ const fetchDispatcherData = async () => {
   }
 }
 
+const handleAcceptCopiedJob = async (copiedJobId) => {
+  if (confirm('Are you sure you want to accept this job application?')) {
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/v1/jobs/${copiedJobId}/accept?username=${props.currentUser.username}`
+      )
+      alert('Job application accepted successfully!')
+      fetchDispatcherData()
+    } catch (err) {
+      console.error('Accept application error:', err.response ? err.response.data : err)
+      alert(`Failed to accept application: ${err.response ? err.response.data.detail : err.message}`)
+    }
+  }
+}
+
+const handleRejectCopiedJob = async (copiedJobId) => {
+  if (confirm('Are you sure you want to reject this job application?')) {
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/v1/jobs/${copiedJobId}/reject?username=${props.currentUser.username}`
+      )
+      alert('Job application rejected.')
+      fetchDispatcherData()
+    } catch (err) {
+      console.error('Reject application error:', err.response ? err.response.data : err)
+      alert(`Failed to reject application: ${err.response ? err.response.data.detail : err.message}`)
+    }
+  }
+}
+
 onMounted(fetchDispatcherData)
-watch(() => props.currentUser, fetchDispatcherData) // Re-fetch when currentUser changes
+watch(() => props.currentUser, fetchDispatcherData, { immediate: true })
 
 const handleCreateJob = async (jobData) => {
   try {
-    const response = await axios.post(
+    await axios.post(
       `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/jobs/?username=${props.currentUser.username}`,
       jobData
     )
     alert('Job created successfully!')
-    fetchDispatcherData() // Refresh job list
+    fetchDispatcherData()
   } catch (err) {
     console.error('Job creation error:', err.response ? err.response.data : err)
     alert(`Job creation failed: ${err.response ? err.response.data.detail : err.message}`)
@@ -97,20 +179,7 @@ const handleCreateJob = async (jobData) => {
 }
 
 const handleJobsUploaded = () => {
-  fetchDispatcherData() // Refresh job list after Excel upload
-}
-
-const handleClaimJob = async (jobId) => {
-  try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/v1/drivers/jobs/${jobId}/claim?username=${props.currentUser.username}`
-    )
-    alert('Job claimed successfully!')
-    fetchDispatcherData() // Refresh job list to reflect changes
-  } catch (err) {
-    console.error('Job claim error:', err.response ? err.response.data : err)
-    alert(`Job claim failed: ${err.response ? err.response.data.detail : err.message}`)
-  }
+  fetchDispatcherData()
 }
 
 const handleAcceptInvitation = async (invitationId) => {
@@ -118,12 +187,8 @@ const handleAcceptInvitation = async (invitationId) => {
     const response = await axios.put(
       `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations/${invitationId}/accept?username=${props.currentUser.username}`
     )
-    alert('Invitation accepted!')
-    // Re-fetch current user to update company info immediately
-    const userResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/v1/users/me?username=${props.currentUser.username}`);
-    props.currentUser.value = userResponse.data; // Update currentUser prop
-    localStorage.setItem('currentUser', JSON.stringify(userResponse.data)); // Update localStorage
-    fetchDispatcherData(); // Refresh data after accepting
+    alert(`Invitation from ${response.data.company_name} for ${response.data.invitee_role} accepted!`);
+    fetchDispatcherData()
   } catch (err) {
     console.error('Accept invitation error:', err.response ? err.response.data : err)
     alert(`Failed to accept invitation: ${err.response ? err.response.data.detail : err.message}`)
@@ -135,8 +200,8 @@ const handleDeclineInvitation = async (invitationId) => {
     const response = await axios.put(
       `${import.meta.env.VITE_API_URL}/api/v1/dispatchers/invitations/${invitationId}/decline?username=${props.currentUser.username}`
     )
-    alert('Invitation declined!')
-    fetchDispatcherData() // Refresh data after declining
+    alert(`Invitation from ${response.data.company_name} for ${response.data.invitee_role} declined.`);
+    fetchDispatcherData()
   } catch (err) {
     console.error('Decline invitation error:', err.response ? err.response.data : err)
     alert(`Failed to decline invitation: ${err.response ? err.response.data.detail : err.message}`)
@@ -144,7 +209,7 @@ const handleDeclineInvitation = async (invitationId) => {
 }
 
 const startEditingJob = (job) => {
-  editingJob.value = { ...job } // Create a copy to avoid direct mutation
+  editingJob.value = { ...job }
 }
 
 const cancelEditingJob = () => {
@@ -153,16 +218,16 @@ const cancelEditingJob = () => {
 
 const handleUpdateJob = async ({ id, data }) => {
   try {
-    const response = await axios.put(
+    await axios.put(
       `${import.meta.env.VITE_API_URL}/api/v1/jobs/${id}?username=${props.currentUser.username}`,
       data
     )
-    //alert('Job updated successfully!')
-    editingJob.value = null // Exit editing mode
-    fetchDispatcherData() // Refresh job list
+    fetchDispatcherData()
   } catch (err) {
     console.error('Job update error:', err.response ? err.response.data : err)
-    //alert(`Job update failed: ${err.response ? err.response.data.detail : err.message}`)
+    alert(`Job update failed: ${err.response ? err.response.data.detail : err.message}`)
+  } finally {
+    editingJob.value = null
   }
 }
 
@@ -173,7 +238,7 @@ const handleDeleteJob = async (jobId) => {
         `${import.meta.env.VITE_API_URL}/api/v1/jobs/${jobId}?username=${props.currentUser.username}`
       )
       alert('Job deleted successfully!')
-      fetchDispatcherData() // Refresh job list
+      fetchDispatcherData()
     } catch (err) {
       console.error('Job deletion error:', err.response ? err.response.data : err)
       alert(`Job deletion failed: ${err.response ? err.response.data.detail : err.message}`)
@@ -191,26 +256,72 @@ const cancelAssigningJob = () => {
   jobToAssign.value = null
 }
 
-const handleAssignJob = async ({ jobId, driverId }) => {
+const handleAssignJob = async ({ jobId, driverId, vehicleId }) => {
   try {
-    const response = await axios.put(
-      `$ {import.meta.env.VITE_API_URL}/api/v1/jobs/${jobId}/assign?username=${props.currentUser.username}&driver_id=${driverId}`
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/${jobId}/send_to_driver?username=${props.currentUser.username}&driver_id=${driverId}&vehicle_id=${vehicleId}`
     )
-    //alert('Job assigned successfully!')
-    cancelAssigningJob() // Close modal
-    fetchDispatcherData() // Refresh job list
+    alert('Job sent to driver successfully!')
+    cancelAssigningJob()
+    fetchDispatcherData()
   } catch (err) {
     console.error('Job assignment error:', err.response ? err.response.data : err)
-    //alert(`Job assignment failed: ${err.response ? err.response.data.detail : err.message}`)
+    alert(`Job assignment failed: ${err.response ? err.response.data.detail : err.message}`)
   }
+}
+
+const handleExportJobs = async () => {
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/v1/jobs/export?username=${props.currentUser.username}`,
+      { responseType: 'blob' }
+    )
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'jobs_export.xlsx')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+    alert('Jobs exported successfully!')
+  } catch (err) {
+    console.error('Error exporting jobs:', err.response ? err.response.data : err)
+    if (err.response && err.response.data instanceof Blob && err.response.data.type === 'application/json') {
+      try {
+        const errorText = await err.response.data.text();
+        const errorJson = JSON.parse(errorText);
+        alert(`Failed to export jobs: ${errorJson.detail || 'An unknown error occurred.'}`);
+      } catch (parseError) {
+        alert('Failed to export jobs and could not parse the error message.');
+      }
+    } else {
+      alert(`Failed to export jobs: ${err.message}`);
+    }
+  }
+}
+
+const handleViewJobDetails = (job) => {
+  selectedJobForDetails.value = job
+  showJobDetailsModal.value = true
+}
+
+const closeJobDetailsModal = () => {
+  showJobDetailsModal.value = false
+  selectedJobForDetails.value = null
 }
 </script>
 
 <style scoped>
-h1 {
+h1, h2 {
   text-align: center;
   margin-bottom: 2rem;
 }
+
+.collapsible-form h2 {
+  cursor: pointer;
+}
+
 .edit-job-section {
   background-color: #f0f8ff;
   padding: 1.5rem;

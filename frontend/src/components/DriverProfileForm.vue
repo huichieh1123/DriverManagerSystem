@@ -4,41 +4,88 @@ import { ref, watch, defineProps, defineEmits } from 'vue'
 const props = defineProps({
   initialData: {
     type: Object,
-    default: () => ({ license_number: '', vehicle_type: '' })
+    default: () => ({
+      chinese_name: '',
+      english_name: '',
+      id_card_number: '',
+      phone_number: '',
+      gender: '',
+      birth_date: '',
+      license_valid_date: '',
+      license_review_date: '',
+      license_type: '',
+      gmail: ''
+    })
   }
 })
 
-const licenseNumber = ref(props.initialData.license_number)
-const vehicleType = ref(props.initialData.vehicle_type)
+const profile = ref({ ...props.initialData })
 
 const emit = defineEmits(['update'])
 
 watch(() => props.initialData, (newVal) => {
-  licenseNumber.value = newVal.license_number
-  vehicleType.value = newVal.vehicle_type
+  profile.value = { ...newVal }
 }, { deep: true, immediate: true })
 
 const updateProfile = () => {
-  emit('update', {
-    license_number: licenseNumber.value,
-    vehicle_type: vehicleType.value
-  })
+  emit('update', profile.value)
 }
 
-// Emit update whenever input changes
-watch([licenseNumber, vehicleType], updateProfile)
+// Emit update whenever any profile data changes
+watch(profile, updateProfile, { deep: true })
 </script>
 
 <template>
   <div class="profile-form-section">
     <h3>Driver Profile</h3>
-    <div class="form-group">
-      <label for="licenseNumber">License Number:</label>
-      <input type="text" id="licenseNumber" v-model="licenseNumber" @input="updateProfile" />
+    <div v-if="companyName" class="form-group">
+      <label for="company_name">隸屬公司:</label>
+      <input type="text" id="company_name" :value="companyName" readonly style="background-color: #eee;" />
     </div>
     <div class="form-group">
-      <label for="vehicleType">Vehicle Type:</label>
-      <input type="text" id="vehicleType" v-model="vehicleType" @input="updateProfile" />
+      <label for="chinese_name">中文姓名:</label>
+      <input type="text" id="chinese_name" v-model="profile.chinese_name" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="english_name">英文簡稱 (非必):</label>
+      <input type="text" id="english_name" v-model="profile.english_name" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="id_card_number">身分證號:</label>
+      <input type="text" id="id_card_number" v-model="profile.id_card_number" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="phone_number">手機號碼:</label>
+      <input type="text" id="phone_number" v-model="profile.phone_number" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="gender">性別:</label>
+      <input type="text" id="gender" v-model="profile.gender" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="birth_date">出生年月:</label>
+      <input type="date" id="birth_date" v-model="profile.birth_date" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="license_valid_date">駕照有效日:</label>
+      <input type="date" id="license_valid_date" v-model="profile.license_valid_date" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="license_review_date">駕照審驗日:</label>
+      <input type="date" id="license_review_date" v-model="profile.license_review_date" @input="updateProfile" />
+    </div>
+    <div class="form-group">
+      <label for="license_type">駕照種類:</label>
+      <select id="license_type" v-model="profile.license_type" @change="updateProfile">
+        <option value="" disabled>-- 請選擇 --</option>
+        <option value="職小客">職小客</option>
+        <option value="職大客">職大客</option>
+        <option value="職大貨">職大貨</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="gmail">G MAIL:</label>
+      <input type="text" id="gmail" v-model="profile.gmail" @input="updateProfile" />
     </div>
   </div>
 </template>

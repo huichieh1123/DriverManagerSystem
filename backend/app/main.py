@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from app.api.v1.endpoints import tasks, users, jobs, companies, dispatchers, drivers
+from app.api.v1.endpoints import tasks, users, jobs, companies, dispatchers, drivers, vehicles
 
 app = FastAPI(title="Driver Manager System API")
 
@@ -29,11 +29,12 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
+app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["jobs"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(companies.router, prefix="/api/v1/companies", tags=["companies"])
 app.include_router(dispatchers.router, prefix="/api/v1/dispatchers", tags=["dispatchers"])
 app.include_router(drivers.router, prefix="/api/v1/drivers", tags=["drivers"])
-app.include_router(jobs.router, prefix="/api/v1", tags=["jobs"])
+app.include_router(vehicles.router, prefix="/api/v1/vehicles", tags=["vehicles"])
 
 @app.get("/")
 def read_root():

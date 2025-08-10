@@ -13,27 +13,17 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const navigateToDashboard = (user) => {
-  // Store user ID as string
-  localStorage.setItem('currentUser', JSON.stringify({ ...user, id: String(user.id) }))
-  localStorage.setItem('currentUsername', user.username)
+const emit = defineEmits(['login-success'])
 
-  if (user.roles.includes('company')) {
-    router.push('/company')
-  } else if (user.roles.includes('dispatcher')) {
-    router.push('/dispatcher')
-  } else if (user.roles.includes('driver')) {
-    router.push('/driver')
-  } else {
-    router.push('/profile') // Default for users with no specific role page
-  }
+const emitLoginSuccess = (user) => {
+  emit('login-success', user)
 }
 
 const handleRegister = async (userData) => {
   try {
     const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/users/register`, userData)
     alert('Registration successful!')
-    navigateToDashboard(response.data)
+    emitLoginSuccess(response.data)
   } catch (err) {
     console.error('Registration error:', err.response ? err.response.data : err)
     alert(`Registration failed: ${err.response ? err.response.data.detail : err.message}`)
@@ -45,7 +35,7 @@ const handleLogin = async (userData) => {
   try {
     const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/users/login`, userData)
     alert('Login successful!')
-    navigateToDashboard(response.data) // Direct navigation
+    emitLoginSuccess(response.data) // Direct navigation
   } catch (err) {
     console.error('Login error:', err.response ? err.response.data : err)
     alert(`Login failed: ${err.response ? err.response.data.detail : err.message}`)

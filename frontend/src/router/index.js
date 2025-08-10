@@ -33,6 +33,12 @@ const routes = [
     name: 'Profile',
     component: () => import('../views/ProfilePage.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/vehicles',
+    name: 'VehicleManagement',
+    component: () => import('../views/VehicleManagementPage.vue'),
+    meta: { requiresAuth: true, roles: ['driver', 'company'] } // Drivers and Companies can manage vehicles
   }
 ]
 

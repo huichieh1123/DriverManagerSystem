@@ -19,23 +19,48 @@ const props = defineProps({
 const emit = defineEmits(['assign', 'close'])
 
 const selectedDriverId = ref(null)
+const selectedVehicleId = ref(null) // New: to store selected vehicle ID
+const currentDriverVehicles = ref([]) // New: to store vehicles of the currently selected driver
 
-// Reset selectedDriverId when modal is shown/hidden or job changes
+// Watch for changes in props.show to reset selected values when modal opens
 watch(() => props.show, (newVal) => {
   if (newVal) {
     selectedDriverId.value = props.job.assigned_driver_id || null
+    selectedVehicleId.value = null // Reset vehicle selection
   }
 })
+
+// Watch for changes in props.job to reset selected values when job changes
 watch(() => props.job, (newVal) => {
   selectedDriverId.value = newVal.assigned_driver_id || null
+  selectedVehicleId.value = null // Reset vehicle selection
 })
+
+// Watch for changes in selectedDriverId to update currentDriverVehicles
+watch(selectedDriverId, (newDriverId) => {
+  selectedVehicleId.value = null; // Reset vehicle when driver changes
+  if (newDriverId) {
+    const driver = props.drivers.find(d => d.id === newDriverId);
+    if (driver && driver.driver_profile && driver.driver_profile.vehicles) {
+      currentDriverVehicles.value = driver.driver_profile.vehicles;
+    } else {
+      currentDriverVehicles.value = [];
+    }
+  } else {
+    currentDriverVehicles.value = [];
+  }
+}, { immediate: true }); // Run immediately to populate vehicles if a driver is pre-selected
 
 const handleAssign = () => {
   if (!selectedDriverId.value) {
     alert('Please select a driver.')
     return
   }
-  emit('assign', { jobId: props.job.id, driverId: selectedDriverId.value })
+  if (!selectedVehicleId.value) {
+    alert('Please select a vehicle for the driver.')
+    return
+  }
+  emit('assign', { jobId: props.job.id, driverId: selectedDriverId.value, vehicleId: selectedVehicleId.value })
 }
 
 const handleClose = () => {
@@ -56,8 +81,20 @@ const handleClose = () => {
           </option>
         </select>
       </div>
+
+      <div class="form-group" v-if="selectedDriverId">
+        <label for="vehicleSelect">Select Vehicle:</label>
+        <select id="vehicleSelect" v-model="selectedVehicleId">
+          <option :value="null">-- Select a Vehicle --</option>
+          <option v-for="vehicle in currentDriverVehicles" :key="vehicle.id" :value="vehicle.id">
+            {{ vehicle.license_plate }} ({{ vehicle.make }} {{ vehicle.model }})
+          </option>
+        </select>
+        <p v-if="currentDriverVehicles.length === 0" class="no-vehicles-message">No vehicles found for this driver.</p>
+      </div>
+
       <div class="modal-actions">
-        <button @click="handleAssign" class="assign-btn">Assign</button>
+        <button @click="handleAssign" class="assign-btn" :disabled="!selectedDriverId || !selectedVehicleId">Assign</button>
         <button @click="handleClose" class="cancel-btn">Cancel</button>
       </div>
     </div>
@@ -111,6 +148,12 @@ h3 {
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
+}
+
+.no-vehicles-message {
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
 }
 
 .modal-actions {

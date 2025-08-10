@@ -44,12 +44,23 @@ async def download_job_template(
     ws.title = "Job Template"
 
     # Define headers for the Excel file
-    headers = ["title", "description", "status", "assigned_driver_id", "is_public"]
+    headers = [
+        "company", "transfer_type", "pick_up_date", "pick_up_time", "flight_number",
+        "passenger_name", "phone_number", "vehicle_model", "num_of_passenger",
+        "from_location", "to_location", "additional_services", "special_requirements",
+        "other_contact_info", "order_number", "total_price", "email", "driver_name",
+        "driver_phone", "vehicle_number", "vehicle_type", "is_public", "status"
+    ]
     ws.append(headers)
 
     # Add some example data (optional)
-    ws.append(["Example Job 1", "Description for Job 1", "pending", "", "TRUE"]) # is_public can be TRUE/FALSE
-    ws.append(["Example Job 2", "Description for Job 2", "assigned", "1", "FALSE"]) # Assign to driver with ID 1
+    ws.append([
+        "Example Company", "Airport Transfer", "2024-12-25", "14:30", "BR123",
+        "John Doe", "0912345678", "Sedan", "2", "Taoyuan Airport", "Taipei City",
+        "Extra luggage", "Child seat needed", "", "ORD12345", "1500",
+        "john.doe@example.com", "Driver Mike", "0987654321", "ABC-1234", "Sedan",
+        "TRUE", "pending"
+    ])
 
     # Save the workbook to a BytesIO object
     excel_file = BytesIO()
@@ -80,10 +91,16 @@ async def upload_jobs_from_excel(
 
         # Assuming the first row is headers
         headers = [cell.value for cell in sheet[1]]
-        expected_headers = ["title", "description", "status", "assigned_driver_id", "is_public"]
+        expected_headers = [
+            "company", "transfer_type", "pick_up_date", "pick_up_time", "flight_number",
+            "passenger_name", "phone_number", "vehicle_model", "num_of_passenger",
+            "from_location", "to_location", "additional_services", "special_requirements",
+            "other_contact_info", "order_number", "total_price", "email", "driver_name",
+            "driver_phone", "vehicle_number", "vehicle_type", "is_public", "status"
+        ]
 
         if not all(h in headers for h in expected_headers):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing required headers in Excel file. Expected: title, description, status, assigned_driver_id, is_public")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Missing required headers in Excel file. Expected: {expected_headers}")
 
         created_jobs = []
         for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True)):
@@ -94,19 +111,14 @@ async def upload_jobs_from_excel(
             
             try:
                 # Validate and create JobCreate object
-                job_data = {
-                    "title": row_data.get("title"),
-                    "description": row_data.get("description"),
-                    "status": row_data.get("status", JobStatus.PENDING.value), # Default to pending
-                    "assigned_driver_id": row_data.get("assigned_driver_id"),
-                    "is_public": str(row_data.get("is_public", "FALSE")).upper() == "TRUE" # Default to FALSE
-                }
-                # Convert assigned_driver_id to str if it's not None and not empty string
-                if job_data["assigned_driver_id"] == "":
-                    job_data["assigned_driver_id"] = None
-                elif job_data["assigned_driver_id"] is not None:
-                    # Assuming assigned_driver_id from Excel is a string that can be used as ID
-                    job_data["assigned_driver_id"] = str(job_data["assigned_driver_id"])
+                job_data = {k: row_data.get(k) for k in expected_headers}
+                job_data["is_public"] = str(job_data.get("is_public", "FALSE")).upper() == "TRUE"
+                job_data["status"] = job_data.get("status", JobStatus.PENDING.value)
+
+                # Ensure company_id and created_by_dispatcher_id are set from current_user
+                job_data["company_id"] = current_user.company_id
+                job_data["created_by_dispatcher_id"] = current_user.id
+                job_data["company_name"] = current_user.company_name
 
                 # Validate status
                 if job_data["status"] not in [s.value for s in JobStatus]:
@@ -127,11 +139,11 @@ async def upload_jobs_from_excel(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to process Excel file: {e}")
 
-@router.get("/invitations/me", response_model=List[Invitation])
+@router.get("/invitations", response_model=List[Invitation])
 async def get_my_invitations(
     current_dispatcher: User = Depends(get_current_dispatcher)
 ):
-    return await invitation.get_for_dispatcher(current_dispatcher.id)
+    return await invitation.get_for_invitee(current_dispatcher.id, RoleType.DISPATCHER)
 
 @router.put("/invitations/{invitation_id}/accept", response_model=Invitation)
 async def accept_invitation(
@@ -142,8 +154,8 @@ async def accept_invitation(
     if not inv:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
-    if inv["dispatcher_id"] != current_dispatcher.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to accept this invitation")
+    if inv["invitee_id"] != current_dispatcher.id or inv["invitee_role"] != RoleType.DISPATCHER.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to accept this invitation or invitation is not for a dispatcher")
 
     if inv["status"] != InvitationStatus.PENDING.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation is not pending")
@@ -169,12 +181,17 @@ async def decline_invitation(
     if not inv:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
-    if inv["dispatcher_id"] != current_dispatcher.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to decline this invitation")
+    if inv["invitee_id"] != current_dispatcher.id or inv["invitee_role"] != RoleType.DISPATCHER.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to decline this invitation or invitation is not for a dispatcher")
 
     if inv["status"] != InvitationStatus.PENDING.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation is not pending")
 
     # Update invitation status
     updated_inv = await invitation.update(invitation_id, {"status": InvitationStatus.DECLINED.value})
+
+    # Update dispatcher's association status to UNASSOCIATED if it was PENDING
+    if current_dispatcher.dispatcher_association_status == DispatcherAssociationStatus.PENDING.value:
+        await user.update(current_dispatcher.id, {"dispatcher_association_status": DispatcherAssociationStatus.UNASSOCIATED})
+
     return updated_inv
