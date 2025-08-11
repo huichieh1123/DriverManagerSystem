@@ -66,7 +66,14 @@ async def remove_dispatcher_from_company(
     if target_dispatcher.get("company_id") != current_company.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This dispatcher is not associated with your company.")
 
-    updated_dispatcher = await user.update(dispatcher_id, {"company_id": None, "company_name": None, "dispatcher_association_status": DispatcherAssociationStatus.UNASSOCIATED})
+    update_data = {"dispatcher_association_status": DispatcherAssociationStatus.UNASSOCIATED}
+
+    # If the user is NOT also an associated driver, then fully remove them from the company
+    if target_dispatcher.get("driver_association_status") != DriverAssociationStatus.ASSOCIATED.value:
+        update_data["company_id"] = None
+        update_data["company_name"] = None
+
+    updated_dispatcher = await user.update(dispatcher_id, update_data)
     if not updated_dispatcher:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to remove dispatcher from company.")
     
@@ -84,7 +91,14 @@ async def remove_driver_from_company(
     if target_driver.get("company_id") != current_company.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This driver is not associated with your company.")
 
-    updated_driver = await user.update(driver_id, {"company_id": None, "company_name": None, "driver_association_status": DriverAssociationStatus.UNASSOCIATED})
+    update_data = {"driver_association_status": DriverAssociationStatus.UNASSOCIATED}
+
+    # If the user is NOT also an associated dispatcher, then fully remove them from the company
+    if target_driver.get("dispatcher_association_status") != DispatcherAssociationStatus.ASSOCIATED.value:
+        update_data["company_id"] = None
+        update_data["company_name"] = None
+
+    updated_driver = await user.update(driver_id, update_data)
     if not updated_driver:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to remove driver from company.")
     

@@ -4,10 +4,14 @@ const props = defineProps({
   jobs: {
     type: Array,
     required: true
+  },
+  userRole: {
+    type: String,
+    default: 'driver' // Default to driver view
   }
 })
 
-const emit = defineEmits(['applyForJob', 'viewDetails'])
+const emit = defineEmits(['applyForJob', 'viewDetails', 'claim-job'])
 
 const getStatusClass = (status) => {
   switch (status) {
@@ -26,6 +30,10 @@ const formatStatus = (status) => {
 
 const handleApplyForJob = (job) => {
   emit('applyForJob', job)
+}
+
+const handleClaimJob = (job) => {
+  emit('claim-job', job)
 }
 
 const handleViewDetails = (job) => {
@@ -59,7 +67,8 @@ const handleViewDetails = (job) => {
           <span v-if="job.company_name">Company: {{ job.company_name }}</span>
         </div>
         <div class="job-actions">
-          <button @click="handleApplyForJob(job)" class="claim-button">Apply for Job</button>
+          <button v-if="userRole === 'driver'" @click="handleApplyForJob(job)" class="claim-button">Apply for Job</button>
+          <button v-if="userRole === 'dispatcher'" @click="handleClaimJob(job)" class="claim-button">Claim Job</button>
           <button @click="handleViewDetails(job)" class="view-details-btn">View Details</button>
         </div>
       </li>

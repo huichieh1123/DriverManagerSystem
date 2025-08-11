@@ -158,11 +158,11 @@ const handleSubmit = () => {
       <input type="text" id="vehicle_number" v-model="job.vehicle_number" />
     </div>
     <div class="form-group">
-      <label for="vehicle_model">Vehicle Model:</label>
+      <label for="vehicle_model">廠牌 (Make):</label>
       <input type="text" id="vehicle_model" v-model="job.vehicle_model" />
     </div>
     <div class="form-group">
-      <label for="vehicle_type">車型:</label>
+      <label for="vehicle_type">車型 (Model):</label>
       <input type="text" id="vehicle_type" v-model="job.vehicle_type" />
     </div>
     <div class="form-group">

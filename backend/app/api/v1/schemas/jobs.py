@@ -109,3 +109,10 @@ class Job(JobBase):
     class Config:
         orm_mode = True
         from_attributes = True
+
+class DispatcherClaimRequest(BaseModel):
+    driver_id: str
+    vehicle_id: str
+
+class JobBatchDeleteRequest(BaseModel):
+    job_ids: List[str]

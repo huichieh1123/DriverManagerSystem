@@ -93,7 +93,7 @@ async def upload_jobs_from_excel(
         headers = [cell.value for cell in sheet[1]]
         expected_headers = [
             "company", "transfer_type", "pick_up_date", "pick_up_time", "flight_number",
-            "passenger_name", "phone_number", "vehicle_model", "num_of_passenger",
+            "passenger_name", "phone_number", "vehicle_make", "num_of_passenger",
             "from_location", "to_location", "additional_services", "special_requirements",
             "other_contact_info", "order_number", "total_price", "email", "driver_name",
             "driver_phone", "vehicle_number", "vehicle_type", "is_public", "status"
@@ -110,8 +110,10 @@ async def upload_jobs_from_excel(
             row_data = dict(zip(headers, row))
             
             try:
-                # Validate and create JobCreate object
-                job_data = {k: row_data.get(k) for k in expected_headers}
+                # Prepare data for JobCreate schema, mapping vehicle_make to vehicle_model
+                job_data = {k: row_data.get(k) for k in expected_headers if k != 'vehicle_make'}
+                job_data['vehicle_model'] = row_data.get('vehicle_make')
+
                 job_data["is_public"] = str(job_data.get("is_public", "FALSE")).upper() == "TRUE"
                 job_data["status"] = job_data.get("status", JobStatus.PENDING.value)
 

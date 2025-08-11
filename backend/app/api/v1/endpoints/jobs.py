@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 import pandas as pd
 import io
 
-from app.api.v1.schemas.jobs import Job, JobCreate, JobUpdate, JobStatus, JobSummary, JobType # Add JobType
+from app.api.v1.schemas.jobs import Job, JobCreate, JobUpdate, JobStatus, JobSummary, JobType, DispatcherClaimRequest # Add DispatcherClaimRequest
 from app.api.v1.schemas.users import User, RoleType
 from app.crud.jobs import CRUDJob # Explicitly import CRUDJob
 from app.crud import user
@@ -153,6 +153,60 @@ async def apply_for_job(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create job application.")
 
     return job_application
+
+@router.post("/{job_id}/dispatcher_claim", response_model=Job)
+async def dispatcher_claim_public_job(
+    job_id: str,
+    claim_request: DispatcherClaimRequest,
+    current_dispatcher: User = Depends(get_current_dispatcher)
+):
+    """
+    Allows a dispatcher to claim a public job and assign it to a driver
+    from their own company.
+    """
+    # 1. Get the original job and verify it's a public pending job
+    original_job = await crud_job_instance.get_by_id(job_id)
+    if not original_job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
+    if not original_job.get("is_public") or original_job.get("status") != JobStatus.PENDING.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job is not a public pending job.")
+
+    # 2. Verify the dispatcher belongs to a company
+    if not current_dispatcher.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Dispatcher is not associated with a company.")
+
+    # 3. Get the selected driver and verify they belong to the same company
+    target_driver = await user.get_by_id(claim_request.driver_id)
+    if not target_driver or RoleType.DRIVER.value not in target_driver['roles']:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Selected user is not a valid driver.")
+    if target_driver.get('company_id') != current_dispatcher.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Selected driver does not belong to your company.")
+
+    # 4. Verify the selected vehicle belongs to the driver OR the dispatcher
+    vehicle_to_check = await vehicle.get_by_id(claim_request.vehicle_id)
+    if not vehicle_to_check:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Selected vehicle not found.")
+    
+    is_driver_vehicle = vehicle_to_check.get("owner_id") == claim_request.driver_id
+    is_dispatcher_vehicle = vehicle_to_check.get("owner_id") == current_dispatcher.id
+    
+    if not (is_driver_vehicle or is_dispatcher_vehicle):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Selected vehicle does not belong to the selected driver or to you.")
+
+    # 5. Create a copied job assigned to the driver
+    driver_profile = target_driver.get('driver_profile') or {}
+    copied_job = await crud_job_instance.create_copied_job(
+        original_job=original_job,
+        driver_id=claim_request.driver_id,
+        vehicle_id=claim_request.vehicle_id,
+        driver_name=target_driver.get('name') or target_driver.get('username'),
+        driver_phone=driver_profile.get("phone_number")
+    )
+
+    if not copied_job:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create copied job for driver.")
+
+    return copied_job
 
 @router.put("/{job_id}", response_model=Job)
 async def update_job(

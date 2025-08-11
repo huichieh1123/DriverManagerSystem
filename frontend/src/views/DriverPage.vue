@@ -5,7 +5,7 @@
 
     <JobList :jobs="myAssignedJobs" title="My Assigned Jobs" :currentUserId="currentUser.id" @completeJob="handleCompleteJob" @viewDetails="handleViewJobDetails" />
     
-    <JobList :jobs="myPendingCopiedJobs" title="Jobs Pending Your Acceptance" :currentUserId="currentUser.id" @acceptCopiedJob="handleAcceptCopiedJob" @rejectCopiedJob="handleRejectCopiedJob" />
+    <JobList :jobs="myPendingCopiedJobs" title="Jobs Pending Your Acceptance" :currentUserId="currentUser.id" @acceptCopiedJob="handleAcceptCopiedJob" @rejectCopiedJob="handleRejectCopiedJob" @viewDetails="handleViewJobDetails" />
 
     <JobList 
       :jobs="myApplications" 

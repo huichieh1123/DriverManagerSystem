@@ -140,7 +140,12 @@ async def get_dispatchers_by_company_id_mongodb(company_id: str) -> List[Dict[st
 
 async def get_drivers_by_company_id_mongodb(company_id: str) -> List[Dict[str, Any]]:
     drivers = []
-    async for user in users_collection.find({"company_id": company_id, "roles": RoleType.DRIVER.value}):
+    query = {
+        "company_id": company_id,
+        "roles": RoleType.DRIVER.value,
+        "driver_association_status": DriverAssociationStatus.ASSOCIATED.value
+    }
+    async for user in users_collection.find(query):
         drivers.append(user_helper(user))
     return drivers
 
@@ -223,9 +228,9 @@ async def create_job_application_mongodb(original_job: Dict[str, Any], driver_id
         "driver_name": driver_name,
         "driver_phone": driver_phone,
         "driver_response_status": None, # No response yet
-        "vehicle_number": selected_vehicle.get("license_plate"), # Add license plate
-        "vehicle_type": selected_vehicle.get("model"), # Add vehicle model as type
-        # You can add more vehicle details here if needed, e.g., make, capacity
+        "vehicle_model": selected_vehicle.get("make"), # Make/廠牌
+        "vehicle_type": selected_vehicle.get("model"), # Model/車型
+        "vehicle_number": selected_vehicle.get("license_plate"),
     })
 
     # Ensure all fields match JobCreate schema
@@ -240,6 +245,12 @@ async def create_copied_job_mongodb(original_job: Dict[str, Any], driver_id: str
     # Generate a unique copied_job_id based on original_job_id and a timestamp
     timestamp = int(time.time() * 1000) # Milliseconds since epoch
     copied_job_id = f"{original_job['id']}-COPY-{timestamp}"
+
+    # Fetch vehicle details to get license plate and model
+    selected_vehicle = await get_vehicle_by_id_mongodb(vehicle_id)
+    if not selected_vehicle:
+        print(f"[create_copied_job_mongodb] Vehicle with ID {vehicle_id} not found.")
+        return None # Or raise an error
 
     # Create a new JobCreate object for the copied job
     copied_job_data = original_job.copy()
@@ -256,6 +267,10 @@ async def create_copied_job_mongodb(original_job: Dict[str, Any], driver_id: str
         "driver_name": driver_name,
         "driver_phone": driver_phone,
         "driver_response_status": None, # No response yet
+        # Add vehicle details
+        "vehicle_model": selected_vehicle.get("make"), # Make/廠牌
+        "vehicle_type": selected_vehicle.get("model"), # Model/車型
+        "vehicle_number": selected_vehicle.get("license_plate"),
     })
 
     # Ensure all fields match JobCreate schema
@@ -295,6 +310,7 @@ async def accept_copied_job_mongodb(copied_job_id: str, driver_id: str) -> Optio
                 "assigned_vehicle_id": copied_job.get("assigned_vehicle_id"), # Assign vehicle from copied job
                 "driver_name": copied_job.get("driver_name"), # Update driver details
                 "driver_phone": copied_job.get("driver_phone"),
+                "vehicle_model": copied_job.get("vehicle_model"), # Copy vehicle make
                 "vehicle_number": copied_job.get("vehicle_number"),
                 "vehicle_type": copied_job.get("vehicle_type"),
             }
