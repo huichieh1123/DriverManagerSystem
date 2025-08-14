@@ -108,7 +108,7 @@ const updateCompanyProfile = (data) => {
       <label for="name">Name:</label>
       <input type="text" id="name" v-model="name" />
     </div>
-    <div class="form-group">
+    <div class="form-group" v-if="isUpdate">
       <label>Roles:</label>
       <div class="roles-checkboxes">
         <label v-for="role in roles" :key="role">

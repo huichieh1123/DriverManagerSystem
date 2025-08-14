@@ -64,3 +64,30 @@ The following issues have been addressed and fixed:
     *   **Fix:** Implemented the `get_for_invitee` method in the `CRUDInvitationMongoDB` class, connecting it to the corresponding database function and removing the obsolete `get_for_dispatcher` method.
 
 All outstanding issues from the previous session are now believed to be resolved.
+
+## Progress Update (as of 2025年8月10日 星期日):
+
+### Features Implemented:
+
+*   **Dispatcher Claim Public Job:**
+    *   Implemented a new backend endpoint (`POST /jobs/{job_id}/dispatcher_claim`) allowing dispatchers to claim public jobs and assign them to company drivers with specific vehicles.
+    *   Developed the corresponding frontend UI in `DispatcherPage.vue`, including a modal for driver and vehicle selection.
+*   **Delete All My Created Jobs:**
+    *   Added a frontend button in `DispatcherPage.vue` that enables dispatchers to batch delete all jobs they have created.
+
+### Bug Fixes & Improvements:
+
+*   **Invitation & Association Logic Refinement:**
+    *   Ensured role-specific company association and disassociation. Users are now accurately listed as drivers or dispatchers based on their accepted invitation role, preventing unintended cross-role listings.
+*   **Vehicle Data Consistency Across Jobs:**
+    *   Standardized vehicle data storage: `vehicle_model` now consistently stores "Make" (廠牌) and `vehicle_type` stores "Model" (車型) throughout the job creation, application, and claiming processes.
+    *   Updated Excel import/export functionalities for jobs to correctly reflect the "vehicle_make" header and map it to the appropriate field.
+    *   Corrected frontend labels for vehicle fields in job forms and details to display "廠牌 (Make)" and "車型 (Model)".
+*   **Driver Page Job Details Display:**
+    *   Resolved an issue where job details were not viewable for "Jobs Pending Your Acceptance" on the driver dashboard.
+*   **Dispatcher Claim Process Robustness:**
+    *   Fixed a 422 "Unprocessable content" error during dispatcher job claiming by ensuring the username is correctly passed as a query parameter for authentication.
+    *   Addressed an `AttributeError` by ensuring dictionary key access for driver details during job claiming.
+    *   Ensured the vehicle "Make" is correctly transferred to the final assigned job details after a dispatcher claims a job.
+
+All recent development tasks and reported issues have been addressed.
